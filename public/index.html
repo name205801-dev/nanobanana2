@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NanoBanana2 이미지 생성기</title>
+<meta name="description" content="Gemini API 기반 NanoBanana2 이미지 생성 웹앱"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0d0f14;
+    --panel: #161921;
+    --border: #252a36;
+    --accent: #3b82f6;
+    --accent2: #6366f1;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --danger: #ef4444;
+    --success: #22c55e;
+    --card: #1e2330;
+    --glow: rgba(59,130,246,0.15);
+    --radius: 14px;
+    --sidebar: 280px;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+  /* ===== SCREENS ===== */
+  .screen{display:none;width:100%;min-height:100vh}
+  .screen.active{display:flex}
+
+  /* ===== LOGIN SCREEN ===== */
+  #login-screen{align-items:center;justify-content:center;flex-direction:column;
+    background: radial-gradient(ellipse at 50% 30%, #1a1f35 0%, var(--bg) 70%)}
+  .login-box{
+    background:var(--panel);border:1px solid var(--border);border-radius:24px;
+    padding:56px 48px;display:flex;flex-direction:column;align-items:center;gap:24px;
+    width:min(420px,90vw);
+    box-shadow:0 0 60px rgba(99,102,241,0.1),0 24px 48px rgba(0,0,0,0.4);
+  }
+  .login-logo{
+    width:80px;height:80px;border-radius:20px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;font-size:40px;
+    box-shadow:0 8px 32px rgba(99,102,241,0.3);
+  }
+  .login-title{font-size:28px;font-weight:700;letter-spacing:-0.5px;
+    background:linear-gradient(135deg,#e2e8f0,#94a3b8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .login-subtitle{font-size:14px;color:var(--muted);text-align:center}
+  .pw-wrap{position:relative;width:100%}
+  #pw-input{
+    width:100%;padding:14px 18px;border-radius:12px;border:2px solid var(--border);
+    background:#0d0f14;color:var(--text);font-size:15px;font-family:'Inter',sans-serif;
+    transition:border-color .2s,box-shadow .2s;outline:none;
+  }
+  #pw-input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--glow)}
+  #pw-input::placeholder{color:var(--muted)}
+  .login-btn{
+    width:100%;padding:14px;border-radius:12px;border:none;cursor:pointer;font-size:15px;font-weight:600;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;
+    transition:opacity .2s,transform .1s;letter-spacing:0.3px;
+  }
+  .login-btn:hover{opacity:.9}
+  .login-btn:active{transform:scale(.98)}
+  .login-error{color:var(--danger);font-size:13px;display:none;text-align:center}
+
+  /* ===== MAIN SCREEN ===== */
+  #main-screen{flex-direction:row;align-items:stretch}
+
+  /* SIDEBAR */
+  .sidebar{
+    width:var(--sidebar);min-width:var(--sidebar);background:var(--panel);
+    border-right:1px solid var(--border);padding:24px 20px;
+    display:flex;flex-direction:column;gap:20px;overflow-y:auto;
+  }
+  .sidebar-title{
+    font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+    color:var(--muted);padding-bottom:12px;border-bottom:1px solid var(--border);
+  }
+  .setting-group{display:flex;flex-direction:column;gap:8px}
+  .setting-label{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:0.5px}
+  .setting-row{display:flex;gap:8px}
+  select{
+    flex:1;padding:9px 12px;border-radius:10px;border:1.5px solid var(--border);
+    background:var(--card);color:var(--text);font-size:13px;font-family:'Inter',sans-serif;
+    outline:none;cursor:pointer;transition:border-color .2s;
+    appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 10px center;background-size:10px;padding-right:28px;
+  }
+  select:focus{border-color:var(--accent)}
+  .size-preview{
+    margin-top:8px;background:var(--card);border-radius:10px;border:1px solid var(--border);
+    padding:12px;display:flex;flex-direction:column;gap:6px;
+  }
+  .size-preview-label{font-size:11px;color:var(--muted);font-weight:500}
+  .size-preview-val{font-size:15px;font-weight:700;color:var(--accent)}
+  .sidebar-brand{margin-top:auto;padding-top:16px;border-top:1px solid var(--border);
+    font-size:11px;color:var(--muted);text-align:center}
+
+  /* MAIN CONTENT */
+  .main-content{
+    flex:1;display:flex;flex-direction:column;align-items:center;
+    padding:40px 32px;overflow-y:auto;gap:24px;
+  }
+  .content-wrap{width:min(640px,100%);display:flex;flex-direction:column;gap:20px}
+
+  /* TOGGLE */
+  .toggle-row{display:flex;align-items:center;gap:10px}
+  .toggle-label{font-size:13px;font-weight:500;color:var(--muted)}
+  .toggle-switch{
+    position:relative;width:60px;height:28px;cursor:pointer;flex-shrink:0
+  }
+  .toggle-switch input{display:none}
+  .toggle-track{
+    position:absolute;inset:0;border-radius:14px;background:#252a36;
+    transition:background .2s;display:flex;align-items:center;
+    justify-content:flex-end;padding-right:8px;
+  }
+  .toggle-switch input:checked~.toggle-track{background:linear-gradient(135deg,var(--accent),var(--accent2));justify-content:flex-start;padding-left:8px;padding-right:0}
+  .toggle-text{font-size:10px;font-weight:700;color:rgba(255,255,255,0.7);user-select:none;letter-spacing:0.5px}
+  .toggle-thumb{
+    position:absolute;top:50%;transform:translateY(-50%) translateX(0);
+    left:4px;width:20px;height:20px;border-radius:50%;background:#fff;
+    transition:transform .2s;box-shadow:0 2px 6px rgba(0,0,0,0.3);
+  }
+  .toggle-switch input:checked~.toggle-thumb{transform:translateY(-50%) translateX(32px)}
+
+  /* TOOLTIP */
+  .tooltip-wrap{position:relative;display:inline-flex;align-items:center}
+  .tooltip-icon{
+    width:18px;height:18px;border-radius:50%;background:var(--border);
+    color:var(--muted);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;
+    cursor:help;flex-shrink:0;user-select:none;transition:background .2s;
+  }
+  .tooltip-icon:hover{background:var(--accent);color:#fff}
+  .tooltip-box{
+    display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+    background:#0d0f14;border:1px solid var(--border);border-radius:10px;
+    padding:12px 14px;font-size:12px;color:var(--text);line-height:1.6;
+    width:280px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.5);
+    white-space:pre-line;
+  }
+  .tooltip-wrap:hover .tooltip-box{display:block}
+  .tooltip-box::after{
+    content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+    border:6px solid transparent;border-top-color:#0d0f14;
+  }
+
+  /* SECTION CARD */
+  .section-card{
+    background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+    padding:20px;display:flex;flex-direction:column;gap:14px;
+  }
+  .section-header{display:flex;align-items:center;gap:10px}
+  .section-title{font-size:13px;font-weight:600;color:var(--text)}
+
+  /* REFERENCE IMAGE AREA */
+  #ref-image-section{transition:all .3s}
+  .ref-drop-zone{
+    border:2px dashed var(--border);border-radius:12px;min-height:130px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    cursor:pointer;transition:border-color .2s,background .2s;position:relative;overflow:hidden;
+    gap:8px;padding:16px;
+  }
+  .ref-drop-zone:hover,.ref-drop-zone.dragover{border-color:var(--accent);background:var(--glow)}
+  .ref-drop-text{font-size:13px;color:var(--muted);pointer-events:none;text-align:center}
+  .ref-image-grid{
+    display:flex;flex-wrap:wrap;gap:8px;
+  }
+  .ref-thumb-wrap{
+    position:relative;width:80px;height:80px;flex-shrink:0;
+  }
+  .ref-thumb{
+    width:80px;height:80px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border);
+    display:block;
+  }
+  .ref-thumb-del{
+    position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;
+    background:var(--danger);color:#fff;border:none;cursor:pointer;
+    font-size:10px;display:flex;align-items:center;justify-content:center;
+    transition:opacity .2s;
+  }
+  .ref-thumb-del:hover{opacity:.8}
+  .ref-drop-add{
+    width:80px;height:80px;border:2px dashed var(--border);border-radius:8px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    color:var(--muted);font-size:24px;transition:border-color .2s,color .2s;flex-shrink:0;
+  }
+  .ref-drop-add:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* PROMPT BOX */
+  .prompt-wrap{position:relative;display:flex;flex-direction:column;gap:4px}
+  #prompt-input{
+    width:100%;min-height:80px;padding:14px;border-radius:12px;border:2px solid var(--border);
+    background:#0d0f14;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;
+    resize:none;outline:none;transition:border-color .2s,box-shadow .2s;line-height:1.6;
+    overflow-y:hidden;
+  }
+  #prompt-input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--glow)}
+  #prompt-input::placeholder{color:var(--muted)}
+  .prompt-actions{display:flex;justify-content:space-between;align-items:flex-end;margin-top:2px}
+  .gen-btn{
+    width:44px;height:44px;border-radius:12px;border:none;cursor:pointer;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;
+    transition:opacity .2s,transform .1s;box-shadow:0 4px 14px rgba(59,130,246,0.4);
+    flex-shrink:0;
+  }
+  .gen-btn:hover{opacity:.9;transform:scale(1.05)}
+  .gen-btn:active{transform:scale(.95)}
+  .gen-btn svg{pointer-events:none}
+
+  /* LOADING */
+  #loading-overlay{
+    display:none;position:fixed;inset:0;z-index:200;
+    background:rgba(13,15,20,0.85);backdrop-filter:blur(6px);
+    flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  }
+  #loading-overlay.active{display:flex}
+  .spinner{
+    width:56px;height:56px;border:4px solid var(--border);
+    border-top-color:var(--accent);border-radius:50%;animation:spin 0.9s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-text{font-size:14px;color:var(--muted);text-align:center}
+
+  /* ERROR BANNER */
+  #error-banner{
+    display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);
+    border-radius:12px;padding:16px 20px;color:var(--danger);font-size:14px;line-height:1.6;
+    align-items:flex-start;gap:12px;margin-bottom:16px;
+  }
+  #error-banner.active{display:flex}
+  .error-icon{font-size:18px;line-height:1;margin-top:2px}
+  .error-close{
+    margin-left:auto;background:transparent;border:none;color:var(--danger);
+    cursor:pointer;opacity:0.6;font-size:16px;line-height:1;transition:opacity .2s;
+  }
+  .error-close:hover{opacity:1}
+
+  /* ===== RESULT SCREEN ===== */
+  #result-screen{flex-direction:column;align-items:center;min-height:100vh;padding:20px;
+    background:radial-gradient(ellipse at 50% 10%,#131727 0%,var(--bg) 70%)}
+  .back-btn{
+    position:fixed;top:16px;left:16px;z-index:50;
+    padding:8px 16px;border-radius:10px;border:1.5px solid var(--border);
+    background:var(--panel);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;
+    transition:border-color .2s,background .2s;display:flex;align-items:center;gap:6px;
+  }
+  .back-btn:hover{border-color:var(--accent);background:var(--card)}
+  .result-wrap{
+    display:flex;flex-direction:column;align-items:center;gap:16px;
+    width:min(680px,100%);margin-top:60px;
+  }
+  /* thought toggle */
+  .thought-toggle-row{
+    display:flex;align-items:center;gap:8px;cursor:pointer;
+    border:1px solid transparent;border-radius:8px;padding:6px 12px;
+    transition:background .2s,border-color .2s;
+    background:transparent;
+  }
+  .thought-toggle-row:hover{background:rgba(255,255,255,0.03);border-color:var(--border)}
+  .thought-toggle-icon{font-size:14px;color:var(--muted);transition:transform .2s}
+  .thought-toggle-text{font-size:13px;color:var(--muted);font-weight:500}
+  .thought-toggle-row.open .thought-toggle-icon{transform:rotate(90deg)}
+  #thought-content{
+    display:none;background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    padding:16px;font-size:12.5px;line-height:1.8;color:var(--muted);
+    width:100%;max-height:280px;overflow-y:auto;white-space:pre-wrap;
+  }
+  #thought-content.open{display:block}
+
+  /* Result image */
+  #result-image-wrap{
+    position:relative;max-width:100%;
+    border-radius:16px;overflow:hidden;
+    box-shadow:0 24px 60px rgba(0,0,0,0.6),0 0 0 1px var(--border);
+  }
+  #result-img{max-width:100%;max-height:60vh;object-fit:contain;display:block;border-radius:16px}
+
+  /* Result buttons */
+  .result-btns{display:flex;gap:12px;width:100%}
+  .result-btn{
+    flex:1;padding:12px;border-radius:12px;border:1.5px solid var(--border);
+    background:var(--card);color:var(--text);font-size:14px;font-weight:600;cursor:pointer;
+    transition:border-color .2s,background .2s;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+  }
+  .result-btn:hover{border-color:var(--accent);background:rgba(59,130,246,0.08)}
+  .result-btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff}
+  .result-btn.primary:hover{opacity:.9}
+
+  /* Regen prompt */
+  #regen-wrap{display:none;width:100%;flex-direction:column;gap:12px}
+  #regen-wrap.visible{display:flex}
+  #regen-prompt{
+    width:100%;min-height:80px;padding:14px;border-radius:12px;border:2px solid var(--border);
+    background:#0d0f14;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;
+    resize:none;outline:none;transition:border-color .2s,box-shadow .2s;line-height:1.6;overflow-y:hidden;
+  }
+  #regen-prompt:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--glow)}
+  #regen-prompt::placeholder{color:var(--muted)}
+  .regen-actions{display:flex;justify-content:flex-end}
+
+  /* SAVE DIALOG */
+  .dialog-backdrop{
+    display:none;position:fixed;inset:0;z-index:300;
+    background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);
+    align-items:center;justify-content:center;
+  }
+  .dialog-backdrop.active{display:flex}
+  .save-dialog{
+    background:var(--panel);border:1px solid var(--border);border-radius:20px;
+    padding:32px;width:min(400px,90vw);display:flex;flex-direction:column;gap:20px;
+    box-shadow:0 24px 60px rgba(0,0,0,0.5);
+  }
+  .save-dialog-title{font-size:18px;font-weight:700;letter-spacing:-0.3px}
+  .save-dialog-group{display:flex;flex-direction:column;gap:8px}
+  .save-dialog-label{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:0.5px}
+  .format-btns{display:flex;gap:8px}
+  .format-btn{
+    flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--border);
+    background:var(--card);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;
+    transition:border-color .2s,background .2s;
+  }
+  .format-btn.selected,.format-btn:hover{border-color:var(--accent);background:rgba(59,130,246,0.12)}
+  #filename-input{
+    width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid var(--border);
+    background:var(--card);color:var(--text);font-size:14px;font-family:'Inter',sans-serif;
+    outline:none;transition:border-color .2s;
+  }
+  #filename-input:focus{border-color:var(--accent)}
+  .save-dialog-btns{display:flex;gap:10px;justify-content:flex-end}
+  .cancel-btn{
+    padding:10px 20px;border-radius:10px;border:1.5px solid var(--border);
+    background:transparent;color:var(--muted);font-size:14px;font-weight:500;cursor:pointer;
+    transition:border-color .2s;
+  }
+  .cancel-btn:hover{border-color:var(--accent)}
+  .confirm-btn{
+    padding:10px 24px;border-radius:10px;border:none;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:#fff;font-size:14px;font-weight:600;cursor:pointer;
+    transition:opacity .2s;
+  }
+  .confirm-btn:hover{opacity:.9}
+  .text-response-wrap{
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    padding:14px;font-size:13px;line-height:1.7;color:var(--text);width:100%;
+  }
+
+  /* DISABLED STATE */
+  .ui-disabled{pointer-events:none;opacity:0.45!important}
+
+  /* scrollbar */
+  ::-webkit-scrollbar{width:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div class="screen active" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">🍌</div>
+    <div class="login-title">NanoBanana2</div>
+    <div class="login-subtitle">AI 이미지 생성 서비스<br>접속하려면 암호를 입력하세요</div>
+    <div class="pw-wrap">
+      <input type="password" id="pw-input" placeholder="암호를 입력해주세요." autocomplete="off" maxlength="50"/>
+    </div>
+    <div class="login-error" id="login-error">암호가 틀렸습니다.</div>
+    <button class="login-btn" id="login-btn">접속하기</button>
+  </div>
+</div>
+
+<!-- ===== MAIN SCREEN ===== -->
+<div class="screen" id="main-screen">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="main-sidebar">
+    <div class="sidebar-title">이미지 설정</div>
+
+    <div class="setting-group">
+      <div class="setting-label">화면비</div>
+      <div class="setting-row">
+        <select id="platform-select">
+          <option value="custom">사용자 설정</option>
+          <option value="facebook">페이스북</option>
+          <option value="x">X</option>
+          <option value="instagram">인스타그램</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <select id="ratio-select">
+          <option value="1:1">1:1</option>
+          <option value="1:4">1:4</option>
+          <option value="1:8">1:8</option>
+          <option value="2:3">2:3</option>
+          <option value="3:2">3:2</option>
+          <option value="3:4" selected>3:4</option>
+          <option value="4:1">4:1</option>
+          <option value="4:3">4:3</option>
+          <option value="4:5">4:5</option>
+          <option value="5:4">5:4</option>
+          <option value="8:1">8:1</option>
+          <option value="9:16">9:16</option>
+          <option value="16:9">16:9</option>
+          <option value="21:9">21:9</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-label">해상도</div>
+      <div class="setting-row">
+        <select id="resolution-select">
+          <option value="512">512</option>
+          <option value="1K" selected>1K</option>
+          <option value="2K">2K</option>
+          <option value="4K">4K</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="size-preview">
+      <div class="size-preview-label">최종 출력 크기</div>
+      <div class="size-preview-val" id="size-preview-val">3:4 · 1K</div>
+    </div>
+
+    <div class="sidebar-brand">NanoBanana2 · Gemini API</div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <div class="content-wrap" id="gen-ui">
+      <!-- Error Banner -->
+      <div id="error-banner">
+        <div class="error-icon">⚠️</div>
+        <div id="error-msg">에러 메시지입니다.</div>
+        <button class="error-close" onclick="hide('error-banner')">✕</button>
+      </div>
+
+      <!-- Google Search Grounding -->
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title">구글 검색 그라운딩</div>
+        </div>
+        <div class="toggle-row">
+          <label class="toggle-switch" id="grounding-toggle-wrap">
+            <input type="checkbox" id="grounding-toggle"/>
+            <div class="toggle-track"><span class="toggle-text" id="grounding-text">OFF</span></div>
+            <div class="toggle-thumb"></div>
+          </label>
+          <span class="toggle-label" id="grounding-label">비활성화됨</span>
+        </div>
+      </div>
+
+      <!-- Reference Images -->
+      <div class="section-card" id="ref-card">
+        <div class="section-header">
+          <div class="section-title">참조 이미지</div>
+          <label class="toggle-switch" id="ref-toggle-wrap" style="margin-left:auto">
+            <input type="checkbox" id="ref-toggle" checked/>
+            <div class="toggle-track"><span class="toggle-text" id="ref-toggle-text">ON</span></div>
+            <div class="toggle-thumb"></div>
+          </label>
+          <div class="tooltip-wrap" style="margin-left:6px">
+            <div class="tooltip-icon">?</div>
+            <div class="tooltip-box">이미지 생성 시 참조할 이미지를 최대 14개 까지 추가할 수 있습니다</div>
+          </div>
+        </div>
+        <div id="ref-image-section">
+          <div id="ref-drop-zone" class="ref-drop-zone">
+            <div class="ref-image-grid" id="ref-image-grid" style="display:none"></div>
+            <div id="ref-empty-text" class="ref-drop-text">
+              <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom:6px;opacity:0.4"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 15l5-5 4 4 3-3 6 6"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>
+              참조 이미지 추가
+            </div>
+          </div>
+          <input type="file" id="ref-file-input" accept="image/*" multiple style="display:none"/>
+        </div>
+      </div>
+
+      <!-- Prompt -->
+      <div class="section-card">
+        <div class="section-title">프롬프트</div>
+        <div class="prompt-wrap">
+          <textarea id="prompt-input" rows="4" placeholder="원하는 이미지를 상세하게 설명해주세요"></textarea>
+          <div class="prompt-actions">
+            <div></div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="tooltip-wrap">
+                <div class="tooltip-icon">?</div>
+                <div class="tooltip-box" style="left:auto;right:0;transform:none">사실적인 이미지를 만들려면 사진 용어를 사용하세요. 카메라 각도, 렌즈 유형, 조명, 세부사항을 언급하여 모델이 실사형 결과에 도달하도록 안내합니다.
+스티커, 아이콘 또는 애셋을 만들려면 스타일을 명시하고 투명한 배경을 요청하세요.
+정확한 텍스트롤 출력하기 위해서는 텍스트, 글꼴 스타일(설명), 전반적인 디자인을 명확하게 설명하세요.</div>
+              </div>
+              <button class="gen-btn" id="generate-btn" title="이미지 생성">
+                <svg width="20" height="20" fill="none" stroke="#fff" stroke-width="2.2" viewBox="0 0 24 24">
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                  <polyline points="12,5 19,12 12,19"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ===== RESULT SCREEN ===== -->
+<div class="screen" id="result-screen">
+  <button class="back-btn" id="back-btn">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15,18 9,12 15,6"/></svg>
+    처음으로
+  </button>
+
+  <div class="result-wrap">
+    <!-- Thought toggle -->
+    <div class="thought-toggle-row" id="thought-toggle-row">
+      <span class="thought-toggle-icon">▶</span>
+      <span class="thought-toggle-text">사고 과정 출력</span>
+    </div>
+    <div id="thought-content"></div>
+
+    <!-- Image -->
+    <div id="result-image-wrap">
+      <img id="result-img" src="" alt="생성된 이미지"/>
+    </div>
+
+    <!-- Text response (if any) -->
+    <div class="text-response-wrap" id="text-response-wrap" style="display:none"></div>
+
+    <!-- Buttons -->
+    <div class="result-btns">
+      <button class="result-btn" id="regen-btn">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        다시 생성
+      </button>
+      <button class="result-btn primary" id="save-btn">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        저장
+      </button>
+    </div>
+
+    <!-- Regen prompt area -->
+    <div id="regen-wrap">
+      <div style="font-size:13px;font-weight:600;color:var(--muted)">새 프롬프트로 다시 생성</div>
+      <div class="prompt-wrap">
+        <textarea id="regen-prompt" rows="4" placeholder="원하는 이미지를 상세하게 설명해주세요"></textarea>
+        <div class="prompt-actions">
+          <div></div>
+          <button class="gen-btn" id="regen-gen-btn" title="이미지 재생성">
+            <svg width="20" height="20" fill="none" stroke="#fff" stroke-width="2.2" viewBox="0 0 24 24">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+              <polyline points="12,5 19,12 12,19"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">이미지를 생성하고 있습니다...<br><span style="font-size:11px;opacity:0.6">잠시만 기다려 주세요.</span></div>
+</div>
+
+<!-- SAVE DIALOG -->
+<div class="dialog-backdrop" id="save-dialog-backdrop">
+  <div class="save-dialog">
+    <div class="save-dialog-title">이미지 저장</div>
+    <div class="save-dialog-group">
+      <div class="save-dialog-label">파일 이름</div>
+      <input type="text" id="filename-input" value="generated_image" placeholder="파일 이름"/>
+    </div>
+    <div class="save-dialog-group">
+      <div class="save-dialog-label">파일 포맷</div>
+      <div class="format-btns">
+        <button class="format-btn selected" data-fmt="png">PNG</button>
+        <button class="format-btn" data-fmt="jpeg">JPEG</button>
+        <button class="format-btn" data-fmt="webp">WEBP</button>
+      </div>
+    </div>
+    <div class="save-dialog-btns">
+      <button class="cancel-btn" id="save-cancel-btn">취소</button>
+      <button class="confirm-btn" id="save-confirm-btn">저장하기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== STATE =====
+const state = {
+  loggedIn: false,
+  aspectRatio: '3:4',
+  imageSize: '1K',
+  useGrounding: false,
+  useRefImages: true,
+  refImages: [],         // [{file, b64, mime}]
+  lastPrompt: '',
+  lastImageB64: null,
+  lastImageMime: 'image/png',
+  lastThought: '',
+  lastText: '',
+  selectedFormat: 'png',
+};
+
+// ===== HELPERS =====
+function $(id){ return document.getElementById(id) }
+function show(el){ if(typeof el==='string') el=$(el); el.classList.add('active') }
+function hide(el){ if(typeof el==='string') el=$(el); el.classList.remove('active') }
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+
+// ===== LOGIN =====
+function tryLogin(){
+  const val = $('pw-input').value;
+  if(val === 'admin'){
+    state.loggedIn = true;
+    $('login-error').style.display = 'none';
+    showScreen('main-screen');
+  } else {
+    $('login-error').style.display = 'block';
+    $('pw-input').value = '';
+    $('pw-input').focus();
+  }
+}
+$('pw-input').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
+$('login-btn').addEventListener('click', tryLogin);
+
+// ===== PLATFORM / RATIO =====
+const platformRatios = {
+  facebook: ['16:9'],
+  x:        ['16:9'],
+  instagram:['1:1'],
+  custom:   ['1:1','1:4','1:8','2:3','3:2','3:4','4:1','4:3','4:5','5:4','8:1','9:16','16:9','21:9'],
+};
+
+function updateRatioOptions(){
+  const platform = $('platform-select').value;
+  const ratioSel = $('ratio-select');
+  const opts = platformRatios[platform];
+  ratioSel.innerHTML = opts.map(r=>`<option value="${r}">${r}</option>`).join('');
+  if(platform === 'custom'){
+    ratioSel.value = '3:4';
+    ratioSel.disabled = false;
+  } else {
+    ratioSel.value = opts[0];
+    ratioSel.disabled = true;
+  }
+  updateSizePreview();
+}
+
+function updateSizePreview(){
+  state.aspectRatio = $('ratio-select').value;
+  state.imageSize   = $('resolution-select').value;
+  $('size-preview-val').textContent = `${state.aspectRatio} · ${state.imageSize}`;
+}
+
+$('platform-select').addEventListener('change', updateRatioOptions);
+$('ratio-select').addEventListener('change', updateSizePreview);
+$('resolution-select').addEventListener('change', updateSizePreview);
+
+// ===== GROUNDING TOGGLE =====
+$('grounding-toggle').addEventListener('change', function(){
+  state.useGrounding = this.checked;
+  $('grounding-text').textContent = this.checked ? 'ON' : 'OFF';
+  $('grounding-label').textContent = this.checked ? '활성화됨' : '비활성화됨';
+});
+
+// ===== REF IMAGE TOGGLE =====
+$('ref-toggle').addEventListener('change', function(){
+  state.useRefImages = this.checked;
+  $('ref-toggle-text').textContent = this.checked ? 'ON' : 'OFF';
+  const sec = $('ref-image-section');
+  if(this.checked){
+    sec.style.display = '';
+  } else {
+    sec.style.display = 'none';
+  }
+});
+
+// ===== DRAG & DROP REF IMAGES =====
+const dropZone = $('ref-drop-zone');
+const refFileInput = $('ref-file-input');
+
+dropZone.addEventListener('click', e=>{
+  if(e.target.classList.contains('ref-thumb-del')) return;
+  if(state.refImages.length < 14) refFileInput.click();
+});
+dropZone.addEventListener('dragover', e=>{ e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', ()=>dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e=>{
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  handleFiles([...e.dataTransfer.files]);
+});
+refFileInput.addEventListener('change', e=>{ handleFiles([...e.target.files]); e.target.value=''; });
+
+function handleFiles(files){
+  const remaining = 14 - state.refImages.length;
+  const toAdd = files.filter(f=>f.type.startsWith('image/')).slice(0, remaining);
+  toAdd.forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      const dataUrl = ev.target.result;
+      const b64 = dataUrl.split(',')[1];
+      state.refImages.push({ file, b64, mime: file.type, url: dataUrl });
+      renderRefImages();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderRefImages(){
+  const grid = $('ref-image-grid');
+  const emptyText = $('ref-empty-text');
+  if(state.refImages.length === 0){
+    grid.style.display = 'none';
+    emptyText.style.display = 'flex';
+    return;
+  }
+  grid.style.display = 'flex';
+  emptyText.style.display = 'none';
+  grid.innerHTML = state.refImages.map((img, i)=>`
+    <div class="ref-thumb-wrap">
+      <img class="ref-thumb" src="${img.url}" alt="참조이미지 ${i+1}"/>
+      <button class="ref-thumb-del" data-idx="${i}" title="삭제">✕</button>
+    </div>
+  `).join('') + (state.refImages.length < 14 ? `<div class="ref-drop-add" title="이미지 추가">+</div>` : '');
+  // Delete buttons
+  grid.querySelectorAll('.ref-thumb-del').forEach(btn=>{
+    btn.addEventListener('click', e=>{ e.stopPropagation(); state.refImages.splice(+btn.dataset.idx,1); renderRefImages(); });
+  });
+  // Add button
+  const addBtn = grid.querySelector('.ref-drop-add');
+  if(addBtn) addBtn.addEventListener('click', e=>{ e.stopPropagation(); refFileInput.click(); });
+}
+
+// ===== AUTO RESIZE TEXTAREA =====
+function autoResize(el){
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+$('prompt-input').addEventListener('input', ()=>autoResize($('prompt-input')));
+$('regen-prompt').addEventListener('input', ()=>autoResize($('regen-prompt')));
+
+// ===== GENERATE =====
+async function generateImage(prompt){
+  if(!prompt.trim()){ alert('프롬프트를 입력해주세요.'); return; }
+  state.lastPrompt = prompt;
+
+  // Lock UI
+  lockUI(true);
+  show('loading-overlay');
+
+  try {
+    const payload = {
+      prompt: prompt,
+      aspect_ratio: state.aspectRatio,
+      image_size: state.imageSize,
+      use_grounding: state.useGrounding,
+      reference_images: (state.useRefImages && state.refImages.length > 0)
+        ? state.refImages.map(img=>({ data: img.b64, mime_type: img.mime }))
+        : [],
+    };
+
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if(!res.ok){
+      const err = await res.json();
+      throw new Error(err.detail || '이미지 생성 실패');
+    }
+
+    const data = await res.json();
+    state.lastImageB64 = data.image;
+    state.lastImageMime = data.mime_type || 'image/png';
+    state.lastThought = data.thought || '';
+    state.lastText = data.text || '';
+
+    showResultScreen();
+  } catch(e){
+    $('error-msg').textContent = e.message;
+    show('error-banner');
+    lockUI(false);
+  } finally {
+    hide('loading-overlay');
+  }
+}
+
+$('generate-btn').addEventListener('click', ()=>generateImage($('prompt-input').value));
+$('regen-gen-btn').addEventListener('click', ()=>generateImage($('regen-prompt').value || state.lastPrompt));
+
+function lockUI(locked){
+  const els = ['main-sidebar','gen-ui'];
+  els.forEach(id=>{ $(id).classList.toggle('ui-disabled', locked); });
+}
+
+// ===== RESULT SCREEN =====
+function showResultScreen(){
+  // Display image
+  const src = `data:${state.lastImageMime};base64,${state.lastImageB64}`;
+  $('result-img').src = src;
+
+  // Text response
+  if(state.lastText){
+    $('text-response-wrap').style.display = 'block';
+    $('text-response-wrap').textContent = state.lastText;
+  } else {
+    $('text-response-wrap').style.display = 'none';
+  }
+
+  // Thought
+  $('thought-content').textContent = state.lastThought || '사고 과정이 없습니다.';
+  $('thought-content').classList.remove('open');
+  $('thought-toggle-row').classList.remove('open');
+
+  // Regen
+  $('regen-wrap').classList.remove('visible');
+  $('regen-prompt').value = '';
+  autoResize($('regen-prompt'));
+
+  showScreen('result-screen');
+}
+
+// ===== THOUGHT TOGGLE =====
+$('thought-toggle-row').addEventListener('click', ()=>{
+  const open = $('thought-content').classList.toggle('open');
+  $('thought-toggle-row').classList.toggle('open', open);
+});
+
+// ===== REGEN BUTTON =====
+$('regen-btn').addEventListener('click', ()=>{
+  const wrap = $('regen-wrap');
+  if(!wrap.classList.contains('visible')){
+    wrap.classList.add('visible');
+    // scroll image to top
+    $('result-screen').scrollTo({ top: 0, behavior: 'smooth' });
+    $('regen-prompt').focus();
+  }
+});
+
+// ===== SAVE BUTTON =====
+$('save-btn').addEventListener('click', ()=>{
+  $('filename-input').value = 'generated_image';
+  // reset format selection
+  document.querySelectorAll('.format-btn').forEach(b=>b.classList.remove('selected'));
+  document.querySelector('.format-btn[data-fmt="png"]').classList.add('selected');
+  state.selectedFormat = 'png';
+  show('save-dialog-backdrop');
+});
+$('save-cancel-btn').addEventListener('click', ()=>hide('save-dialog-backdrop'));
+$('save-dialog-backdrop').addEventListener('click', e=>{ if(e.target===$('save-dialog-backdrop')) hide('save-dialog-backdrop'); });
+
+document.querySelectorAll('.format-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.format-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    state.selectedFormat = btn.dataset.fmt;
+  });
+});
+
+$('save-confirm-btn').addEventListener('click', ()=>{
+  if(!state.lastImageB64){ alert('저장할 이미지가 없습니다.'); return; }
+  const filename = $('filename-input').value.trim() || 'generated_image';
+  const fmt = state.selectedFormat;
+
+  // Convert base64 to blob and download
+  const byteChars = atob(state.lastImageB64);
+  const byteNums = new Array(byteChars.length);
+  for(let i=0;i<byteChars.length;i++) byteNums[i]=byteChars.charCodeAt(i);
+  const byteArr = new Uint8Array(byteNums);
+  const mimeMap = { png:'image/png', jpeg:'image/jpeg', webp:'image/webp' };
+
+  // Convert image to chosen format using canvas
+  const img = new Image();
+  img.onload = ()=>{
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    if(fmt === 'jpeg'){ ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height); }
+    ctx.drawImage(img, 0, 0);
+    canvas.toBlob(blob=>{
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${filename}.${fmt}`; a.click();
+      URL.revokeObjectURL(url);
+    }, mimeMap[fmt] || 'image/png', 0.95);
+  };
+  img.src = `data:${state.lastImageMime};base64,${state.lastImageB64}`;
+  hide('save-dialog-backdrop');
+});
+
+// ===== BACK BUTTON =====
+$('back-btn').addEventListener('click', ()=>{
+  // Reset all state except login
+  state.aspectRatio = '3:4';
+  state.imageSize = '1K';
+  state.useGrounding = false;
+  state.useRefImages = true;
+  state.refImages = [];
+  state.lastPrompt = '';
+  state.lastImageB64 = null;
+  state.lastImageMime = 'image/png';
+  state.lastThought = '';
+  state.lastText = '';
+
+  // Reset UI
+  $('platform-select').value = 'custom';
+  updateRatioOptions();
+  $('ratio-select').value = '3:4';
+  $('resolution-select').value = '1K';
+  updateSizePreview();
+
+  $('grounding-toggle').checked = false;
+  $('grounding-text').textContent = 'OFF';
+  $('grounding-label').textContent = '비활성화됨';
+
+  $('ref-toggle').checked = true;
+  $('ref-toggle-text').textContent = 'ON';
+  $('ref-image-section').style.display = '';
+  renderRefImages();
+
+  $('prompt-input').value = '';
+  autoResize($('prompt-input'));
+
+  $('result-img').src = '';
+
+  lockUI(false);
+  showScreen('main-screen');
+});
+
+// ===== INIT =====
+updateSizePreview();
+renderRefImages();
+</script>
+</body>
+</html>
