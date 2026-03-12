@@ -7,8 +7,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict
+import os
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+
+load_dotenv()
 
 app = FastAPI()
 
@@ -20,15 +24,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-API_KEY = "AIzaSyAs7wdnho1KsufQlUmfysbKi-NbaB9Mfco"
+API_KEY = os.environ.get("GEMINI_API_KEY")
 MODEL = "gemini-3.1-flash-image-preview"
 
 
 class GenerateRequest(BaseModel):
     prompt: str
-    aspect_ratio: str = "3:4"
-    image_size: str = "1K"
+    aspect_ratio: str = "1:1"
+    image_size: str = "512"
     use_grounding: bool = False
+    use_no_person: bool = False
     reference_images: Optional[List[Dict[str, str]]] = None  # list of {data: base64str, mime_type: str}
 
 
@@ -42,10 +47,24 @@ async def serve_index():
 @app.post("/api/generate")
 async def generate_image(req: GenerateRequest):
     try:
+        if not API_KEY:
+            raise HTTPException(status_code=500, detail="서버에 API 키가 설정되지 않았습니다.")
+        
         client = genai.Client(api_key=API_KEY)
 
         # Build contents list
-        contents = [req.prompt]
+        # 1. 사용자의 원래 프롬프트를 바탕으로 부가적인 지시사항을 텍스트로 합쳐서 전달합니다.
+        final_prompt = req.prompt
+        if req.use_no_person:
+            # 모델이 사람을 생성하지 않도록 매우 강력한 네거티브 지시를 프롬프트의 시작과 끝에 모두 배치합니다.
+            strong_negative = "CRITICAL INSTRUCTION: You MUST remove all humans, people, characters, and human-like figures from the reference images. DO NOT generate any people. If there are people in the reference image, completely erase them and reconstruct the background or surrounding objects instead. The final result MUST be 100% free of any human presence."
+            final_prompt = f"{strong_negative}\n\nUser Prompt: {final_prompt}\n\n(Reminder: Erase ALL people from the reference. No humans allowed in the final image.)"
+        
+        # 2. 사고 과정을 한국어로 출력하도록 시스템 지시사항을 슬쩍 덧붙입니다.
+        #    (Gemini 3.1 flash image 모델의 thought 언어 제어를 위해 프롬프트에 명시)
+        final_prompt += "\n\n(Important rule for your thinking process: Output your thought process entirely in Korean.)"
+
+        contents = [final_prompt]
 
         if req.reference_images:
             for img_info in req.reference_images[:14]:
@@ -84,6 +103,7 @@ async def generate_image(req: GenerateRequest):
         thought_text = ""
         response_text = ""
 
+        # 사고 과정(thought)은 part.text에 누적되며, part.thought가 True인 파트로 들어옵니다.
         for part in response.parts:
             if part.thought:
                 if part.text:

@@ -74,11 +74,11 @@
     display:flex;flex-direction:column;gap:20px;overflow-y:auto;
   }
   .sidebar-title{
-    font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+    font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
     color:var(--muted);padding-bottom:12px;border-bottom:1px solid var(--border);
   }
   .setting-group{display:flex;flex-direction:column;gap:8px}
-  .setting-label{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:0.5px}
+  .setting-label{font-size:14px;font-weight:600;color:var(--muted);letter-spacing:0.5px}
   .setting-row{display:flex;gap:8px}
   select{
     flex:1;padding:9px 12px;border-radius:10px;border:1.5px solid var(--border);
@@ -92,8 +92,8 @@
     margin-top:8px;background:var(--card);border-radius:10px;border:1px solid var(--border);
     padding:12px;display:flex;flex-direction:column;gap:6px;
   }
-  .size-preview-label{font-size:11px;color:var(--muted);font-weight:500}
-  .size-preview-val{font-size:15px;font-weight:700;color:var(--accent)}
+  .size-preview-label{font-size:13px;color:var(--muted);font-weight:500}
+  .size-preview-val{font-size:16px;font-weight:700;color:var(--accent)}
   .sidebar-brand{margin-top:auto;padding-top:16px;border-top:1px solid var(--border);
     font-size:11px;color:var(--muted);text-align:center}
 
@@ -152,7 +152,7 @@
     padding:20px;display:flex;flex-direction:column;gap:14px;
   }
   .section-header{display:flex;align-items:center;gap:10px}
-  .section-title{font-size:13px;font-weight:600;color:var(--text)}
+  .section-title{font-size:16px;font-weight:600;color:var(--text)}
 
   /* REFERENCE IMAGE AREA */
   #ref-image-section{transition:all .3s}
@@ -163,7 +163,7 @@
     gap:8px;padding:16px;
   }
   .ref-drop-zone:hover,.ref-drop-zone.dragover{border-color:var(--accent);background:var(--glow)}
-  .ref-drop-text{font-size:13px;color:var(--muted);pointer-events:none;text-align:center}
+  .ref-drop-text{font-size:15px;color:var(--muted);pointer-events:none;text-align:center}
   .ref-image-grid{
     display:flex;flex-wrap:wrap;gap:8px;
   }
@@ -352,10 +352,31 @@
   /* DISABLED STATE */
   .ui-disabled{pointer-events:none;opacity:0.45!important}
 
+  /* options grid */
+  .options-grid{display:grid; grid-template-columns: 1fr 1fr; gap:20px;}
+
   /* scrollbar */
   ::-webkit-scrollbar{width:6px}
   ::-webkit-scrollbar-track{background:transparent}
   ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+  /* ===== RESPONSIVE MOBILE ===== */
+  @media (max-width: 768px) {
+    #main-screen { flex-direction: column; }
+    .sidebar { 
+      width: 100%; min-width: 100%; border-right: none; 
+      border-bottom: 1px solid var(--border); padding: 16px; 
+      height: auto; max-height: 40vh;
+    }
+    .main-content { padding: 20px 16px; }
+    .options-grid { grid-template-columns: 1fr; gap: 16px; }
+    .result-wrap { margin-top: 30px; }
+    .result-btns { flex-direction: column; }
+    .login-box { padding: 40px 24px; }
+    .dialog-backdrop { padding: 16px; }
+    .save-dialog { width: 100%; padding: 24px; }
+    .format-btns { flex-direction: column; }
+  }
 </style>
 </head>
 <body>
@@ -392,12 +413,12 @@
       </div>
       <div class="setting-row">
         <select id="ratio-select">
-          <option value="1:1">1:1</option>
+          <option value="1:1" selected>1:1</option>
           <option value="1:4">1:4</option>
           <option value="1:8">1:8</option>
           <option value="2:3">2:3</option>
           <option value="3:2">3:2</option>
-          <option value="3:4" selected>3:4</option>
+          <option value="3:4">3:4</option>
           <option value="4:1">4:1</option>
           <option value="4:3">4:3</option>
           <option value="4:5">4:5</option>
@@ -414,8 +435,8 @@
       <div class="setting-label">해상도</div>
       <div class="setting-row">
         <select id="resolution-select">
-          <option value="512">512</option>
-          <option value="1K" selected>1K</option>
+          <option value="512" selected>512</option>
+          <option value="1K">1K</option>
           <option value="2K">2K</option>
           <option value="4K">4K</option>
         </select>
@@ -424,7 +445,7 @@
 
     <div class="size-preview">
       <div class="size-preview-label">최종 출력 크기</div>
-      <div class="size-preview-val" id="size-preview-val">3:4 · 1K</div>
+      <div class="size-preview-val" id="size-preview-val">1:1 · 512</div>
     </div>
 
     <div class="sidebar-brand">NanoBanana2 · Gemini API</div>
@@ -440,18 +461,42 @@
         <button class="error-close" onclick="hide('error-banner')">✕</button>
       </div>
 
-      <!-- Google Search Grounding -->
+      <!-- Toggles: Grounding & No Person -->
       <div class="section-card">
         <div class="section-header">
-          <div class="section-title">구글 검색 그라운딩</div>
+          <div class="section-title">생성 옵션 설정</div>
         </div>
-        <div class="toggle-row">
-          <label class="toggle-switch" id="grounding-toggle-wrap">
-            <input type="checkbox" id="grounding-toggle"/>
-            <div class="toggle-track"><span class="toggle-text" id="grounding-text">OFF</span></div>
-            <div class="toggle-thumb"></div>
-          </label>
-          <span class="toggle-label" id="grounding-label">비활성화됨</span>
+        <div class="options-grid">
+          <!-- Google Search Grounding -->
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div style="font-size:15px; font-weight:500; color:var(--text);">구글 검색 그라운딩</div>
+            <div class="toggle-row">
+              <label class="toggle-switch" id="grounding-toggle-wrap">
+                <input type="checkbox" id="grounding-toggle"/>
+                <div class="toggle-track"><span class="toggle-text" id="grounding-text">OFF</span></div>
+                <div class="toggle-thumb"></div>
+              </label>
+              <span class="toggle-label" id="grounding-label" style="width:65px">비활성화</span>
+            </div>
+          </div>
+          <!-- No Person feature -->
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div style="font-size:15px; font-weight:500; color:var(--text); display:flex; align-items:center; gap:6px;">
+              사람 출력 제외
+              <div class="tooltip-wrap" style="transform:scale(0.8); transform-origin:left">
+                <div class="tooltip-icon">?</div>
+                <div class="tooltip-box">활성화 시, 생성되는 이미지에서 사람이나 인간의 형태가 포함되지 않도록 설정합니다.</div>
+              </div>
+            </div>
+            <div class="toggle-row">
+              <label class="toggle-switch" id="noperson-toggle-wrap">
+                <input type="checkbox" id="noperson-toggle"/>
+                <div class="toggle-track"><span class="toggle-text" id="noperson-text">OFF</span></div>
+                <div class="toggle-thumb"></div>
+              </label>
+              <span class="toggle-label" id="noperson-label" style="width:65px">비활성화</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -596,9 +641,10 @@
 // ===== STATE =====
 const state = {
   loggedIn: false,
-  aspectRatio: '3:4',
-  imageSize: '1K',
+  aspectRatio: '1:1',
+  imageSize: '512',
   useGrounding: false,
+  useNoPerson: false,
   useRefImages: true,
   refImages: [],         // [{file, b64, mime}]
   lastPrompt: '',
@@ -648,7 +694,7 @@ function updateRatioOptions(){
   const opts = platformRatios[platform];
   ratioSel.innerHTML = opts.map(r=>`<option value="${r}">${r}</option>`).join('');
   if(platform === 'custom'){
-    ratioSel.value = '3:4';
+    ratioSel.value = '1:1';
     ratioSel.disabled = false;
   } else {
     ratioSel.value = opts[0];
@@ -667,11 +713,17 @@ $('platform-select').addEventListener('change', updateRatioOptions);
 $('ratio-select').addEventListener('change', updateSizePreview);
 $('resolution-select').addEventListener('change', updateSizePreview);
 
-// ===== GROUNDING TOGGLE =====
+// ===== TOGGLES =====
 $('grounding-toggle').addEventListener('change', function(){
   state.useGrounding = this.checked;
   $('grounding-text').textContent = this.checked ? 'ON' : 'OFF';
-  $('grounding-label').textContent = this.checked ? '활성화됨' : '비활성화됨';
+  $('grounding-label').textContent = this.checked ? '활성화' : '비활성화';
+});
+
+$('noperson-toggle').addEventListener('change', function(){
+  state.useNoPerson = this.checked;
+  $('noperson-text').textContent = this.checked ? 'ON' : 'OFF';
+  $('noperson-label').textContent = this.checked ? '활성화' : '비활성화';
 });
 
 // ===== REF IMAGE TOGGLE =====
@@ -765,6 +817,7 @@ async function generateImage(prompt){
       aspect_ratio: state.aspectRatio,
       image_size: state.imageSize,
       use_grounding: state.useGrounding,
+      use_no_person: state.useNoPerson,
       reference_images: (state.useRefImages && state.refImages.length > 0)
         ? state.refImages.map(img=>({ data: img.b64, mime_type: img.mime }))
         : [],
@@ -904,9 +957,10 @@ $('save-confirm-btn').addEventListener('click', ()=>{
 // ===== BACK BUTTON =====
 $('back-btn').addEventListener('click', ()=>{
   // Reset all state except login
-  state.aspectRatio = '3:4';
-  state.imageSize = '1K';
+  state.aspectRatio = '1:1';
+  state.imageSize = '512';
   state.useGrounding = false;
+  state.useNoPerson = false;
   state.useRefImages = true;
   state.refImages = [];
   state.lastPrompt = '';
@@ -918,13 +972,17 @@ $('back-btn').addEventListener('click', ()=>{
   // Reset UI
   $('platform-select').value = 'custom';
   updateRatioOptions();
-  $('ratio-select').value = '3:4';
-  $('resolution-select').value = '1K';
+  $('ratio-select').value = '1:1';
+  $('resolution-select').value = '512';
   updateSizePreview();
 
   $('grounding-toggle').checked = false;
   $('grounding-text').textContent = 'OFF';
-  $('grounding-label').textContent = '비활성화됨';
+  $('grounding-label').textContent = '비활성화';
+
+  $('noperson-toggle').checked = false;
+  $('noperson-text').textContent = 'OFF';
+  $('noperson-label').textContent = '비활성화';
 
   $('ref-toggle').checked = true;
   $('ref-toggle-text').textContent = 'ON';
