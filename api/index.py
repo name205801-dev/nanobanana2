@@ -20,7 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-API_KEY = "AIzaSyA93D5z1vP97GyxozYbzgMZXQYWCin1JD8"
+API_KEY = "AIzaSyAs7wdnho1KsufQlUmfysbKi-NbaB9Mfco"
 MODEL = "gemini-3.1-flash-image-preview"
 
 
