@@ -353,7 +353,7 @@
   .ui-disabled{pointer-events:none;opacity:0.45!important}
 
   /* options grid */
-  .options-grid{display:grid; grid-template-columns: 1fr 1fr; gap:20px;}
+  .options-grid{display:grid; grid-template-columns: 1fr 1fr 1fr; gap:20px;}
 
   /* scrollbar */
   ::-webkit-scrollbar{width:6px}
@@ -495,6 +495,24 @@
                 <div class="toggle-thumb"></div>
               </label>
               <span class="toggle-label" id="noperson-label" style="width:65px">비활성화</span>
+            </div>
+          </div>
+          <!-- Text Detail Mode feature -->
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div style="font-size:15px; font-weight:500; color:var(--text); display:flex; align-items:center; gap:6px;">
+              글자 상세 모드
+              <div class="tooltip-wrap" style="transform:scale(0.8); transform-origin:left">
+                <div class="tooltip-icon">?</div>
+                <div class="tooltip-box">활성화 시, 나노바나나 PRO (Gemini 3 Pro) 모델을 사용하여 더 뛰어난 텍스트 렌더링 능력으로 이미지를 생성합니다.</div>
+              </div>
+            </div>
+            <div class="toggle-row">
+              <label class="toggle-switch" id="textdetail-toggle-wrap">
+                <input type="checkbox" id="textdetail-toggle"/>
+                <div class="toggle-track"><span class="toggle-text" id="textdetail-text">OFF</span></div>
+                <div class="toggle-thumb"></div>
+              </label>
+              <span class="toggle-label" id="textdetail-label" style="width:65px">비활성화</span>
             </div>
           </div>
         </div>
@@ -645,6 +663,7 @@ const state = {
   imageSize: '512',
   useGrounding: false,
   useNoPerson: false,
+  useTextDetail: false,
   useRefImages: true,
   refImages: [],         // [{file, b64, mime}]
   lastPrompt: '',
@@ -724,6 +743,25 @@ $('noperson-toggle').addEventListener('change', function(){
   state.useNoPerson = this.checked;
   $('noperson-text').textContent = this.checked ? 'ON' : 'OFF';
   $('noperson-label').textContent = this.checked ? '활성화' : '비활성화';
+});
+
+$('textdetail-toggle').addEventListener('change', function(){
+  state.useTextDetail = this.checked;
+  $('textdetail-text').textContent = this.checked ? 'ON' : 'OFF';
+  $('textdetail-label').textContent = this.checked ? '활성화' : '비활성화';
+
+  const resSelect = $('resolution-select');
+  const opt512 = resSelect.querySelector('option[value="512"]');
+
+  if(this.checked){
+    opt512.disabled = true;
+    if(resSelect.value === '512'){
+      resSelect.value = '1K';
+      updateSizePreview();
+    }
+  } else {
+    opt512.disabled = false;
+  }
 });
 
 // ===== REF IMAGE TOGGLE =====
@@ -818,6 +856,7 @@ async function generateImage(prompt){
       image_size: state.imageSize,
       use_grounding: state.useGrounding,
       use_no_person: state.useNoPerson,
+      use_text_detail: state.useTextDetail,
       reference_images: (state.useRefImages && state.refImages.length > 0)
         ? state.refImages.map(img=>({ data: img.b64, mime_type: img.mime }))
         : [],

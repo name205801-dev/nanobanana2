@@ -34,6 +34,7 @@ class GenerateRequest(BaseModel):
     image_size: str = "512"
     use_grounding: bool = False
     use_no_person: bool = False
+    use_text_detail: bool = False
     reference_images: Optional[List[Dict[str, str]]] = None  # list of {data: base64str, mime_type: str}
 
 
@@ -85,16 +86,23 @@ async def generate_image(req: GenerateRequest):
                 aspect_ratio=req.aspect_ratio,
                 image_size=req.image_size,
             ),
-            thinking_config=types.ThinkingConfig(
+        )
+
+        # Gemini 3.1 Flash Image Preview supports thinking config.
+        # Gemini 3 Pro Image Preview does NOT support thinking config, or it throws 400.
+        if not req.use_text_detail:
+            config.thinking_config = types.ThinkingConfig(
                 thinking_level="High",
                 include_thoughts=True,
-            ),
-        )
+            )
         if tools:
             config.tools = tools
 
+        # Select model based on text detail mode
+        target_model = "gemini-3-pro-image-preview" if req.use_text_detail else MODEL
+
         response = client.models.generate_content(
-            model=MODEL,
+            model=target_model,
             contents=contents,
             config=config,
         )
